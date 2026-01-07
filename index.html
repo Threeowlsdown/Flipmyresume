@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Flip to Unlock Resume</title>
+
+  <!-- Pixel font (NES-ish) -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    :root{
+      --bg:#0b1020;
+      --bg2:#060a14;
+      --fg:#e9f1ff;
+      --muted:#b8c7ff;
+      --accent:#7CFFB2;
+      --accent2:#2a7cff;
+      --danger:#ff6b6b;
+      --panel:#101a36;
+      --panel2:#0c1430;
+      --border:#2b3a77;
+      --shadow:#000000;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:24px 14px 64px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(42,124,255,0.20), transparent 35%),
+        radial-gradient(circle at 90% 20%, rgba(124,255,178,0.14), transparent 45%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      color:var(--fg);
+      font-family:"Press Start 2P", system-ui, sans-serif;
+      image-rendering: pixelated;
+    }
+
+    .wrap{ width:min(980px, 100%); margin:0 auto; }
+
+    .crt{
+      position:relative;
+      border:4px solid var(--border);
+      border-radius:14px;
+      background: linear-gradient(180deg, rgba(16,26,54,0.92), rgba(12,20,48,0.92));
+      box-shadow:
+        0 16px 0 rgba(0,0,0,0.35),
+        0 26px 60px rgba(0,0,0,0.55);
+      overflow:hidden;
+    }
+    /* scanlines */
+    .crt:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(255,255,255,0.04),
+          rgba(255,255,255,0.04) 2px,
+          rgba(0,0,0,0.00) 2px,
+          rgba(0,0,0,0.00) 6px
+        );
+      mix-blend-mode: overlay;
+      opacity:0.35;
+    }
+    /* subtle vignette */
+    .crt:after{
+      content:"";
+      position:absolute;
+      inset:-40px;
+      pointer-events:none;
+      background: radial-gradient(circle at 50% 35%, transparent 35%, rgba(0,0,0,0.6) 70%);
+      opacity:0.55;
+    }
+
+    .content{
+      position:relative;
+      padding:22px 18px 18px;
+      z-index:1;
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:18px;
+      line-height:1.3;
+      letter-spacing:0.5px;
+      text-transform:uppercase;
+    }
+    p{
+      margin:0 0 14px;
+      font-size:11px;
+      line-height:1.75;
+      color:var(--muted);
+      max-width: 78ch;
+    }
+
+    .hud{
+      display:flex;
+      flex-wrap:wrap;
+      gap:14px;
+      align-items:flex-start;
+      justify-content:space-between;
+      margin-top:10px;
+    }
+
+    .panel{
+      flex:1 1 360px;
+      border:3px solid var(--border);
+      border-radius:12px;
+      background: rgba(0,0,0,0.18);
+      padding:14px;
+    }
+
+    .coinRow{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .coin{
+      width:120px;
+      height:120px;
+      border:4px solid #ffd86a;
+      border-radius:14px;
+      background:
+        linear-gradient(135deg, rgba(255,216,106,0.9), rgba(197,139,22,0.95));
+      box-shadow:
+        0 8px 0 rgba(0,0,0,0.35),
+        inset 0 0 0 4px rgba(0,0,0,0.18);
+      display:grid;
+      place-items:center;
+      position:relative;
+      transform-style:preserve-3d;
+    }
+
+    /* pixel-ish inner frame */
+    .coin .frame{
+      width:86px;
+      height:86px;
+      border:4px solid rgba(0,0,0,0.28);
+      border-radius:10px;
+      display:grid;
+      place-items:center;
+      background: rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 0 4px rgba(255,255,255,0.10);
+    }
+
+    .coin .face{
+      font-size:18px;
+      color:#1b1200;
+      text-shadow: 2px 2px 0 rgba(255,255,255,0.18);
+      letter-spacing:1px;
+      user-select:none;
+    }
+
+    .btns{ display:flex; gap:10px; flex-wrap:wrap; }
+    .btn{
+      font-family:"Press Start 2P", system-ui, sans-serif;
+      font-size:10px;
+      padding:12px 12px;
+      border-radius:10px;
+      border:3px solid var(--border);
+      background: rgba(42,124,255,0.18);
+      color:var(--fg);
+      cursor:pointer;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.35);
+      text-transform:uppercase;
+    }
+    .btn:active{ transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+    .btn.primary{ background: rgba(42,124,255,0.34); }
+    .btn.green{ background: rgba(124,255,178,0.22); }
+    .btn:disabled{ opacity:0.55; cursor:not-allowed; }
+
+    .status{
+      margin-top:12px;
+      min-height:18px;
+      font-size:10px;
+      line-height:1.6;
+    }
+    .good{ color: var(--accent); }
+    .bad{ color: var(--danger); }
+    .muted{ color: var(--muted); }
+
+    .stats{
+      margin-top:10px;
+      font-size:10px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .unlock{
+      display:none;
+      margin-top:16px;
+    }
+
+    .divider{
+      border:0;
+      border-top:3px dashed rgba(185,199,255,0.30);
+      margin:14px 0 16px;
+    }
+
+    .links{
+      display:grid;
+      gap:8px;
+      margin-top:8px;
+      font-size:10px;
+      line-height:1.7;
+    }
+    a{ color: #8fc0ff; text-decoration:none; }
+    a:hover{ text-decoration: underline; }
+
+    .download{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      margin-top:12px;
+      padding:12px 12px;
+      border-radius:10px;
+      border:3px solid rgba(124,255,178,0.75);
+      background: rgba(124,255,178,0.18);
+      color: var(--fg);
+      box-shadow: 0 6px 0 rgba(0,0,0,0.35);
+      font-size:10px;
+      text-transform:uppercase;
+      width: fit-content;
+    }
+    .download:active{ transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+
+    .resumePreview{
+      margin-top:16px;
+      border:3px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+      background: rgba(0,0,0,0.18);
+    }
+    .resumePreview iframe{
+      width:100%;
+      height:72vh;
+      border:0;
+      background:#fff;
+    }
+
+    /* coin flip animation */
+    .flip{
+      animation: flip 0.85s steps(18, end) forwards;
+    }
+    @keyframes flip{
+      0%{ transform: rotateY(0deg) scale(1); filter: brightness(1); }
+      30%{ transform: rotateY(360deg) scale(1.06); filter: brightness(1.12); }
+      60%{ transform: rotateY(720deg) scale(1.06); filter: brightness(1.12); }
+      100%{ transform: rotateY(1080deg) scale(1); filter: brightness(1); }
+    }
+
+    .footerHint{
+      margin-top:14px;
+      font-size:9px;
+      color:rgba(233,241,255,0.65);
+      line-height:1.7;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="crt">
+      <div class="content">
+        <h1>Coin Flip Resume Unlock</h1>
+        <p>Press FLIP. If it lands on HEADS, you unlock the message + full resume download. (Yes, it is ridiculous on purpose.)</p>
+
+        <div class="hud">
+          <div class="panel">
+            <div class="coinRow">
+              <div class="coin" id="coin" aria-label="Coin">
+                <div class="frame">
+                  <div class="face" id="coinFace">???</div>
+                </div>
+              </div>
+
+              <div style="flex:1; min-width:240px;">
+                <div class="btns">
+                  <button class="btn primary" id="flipBtn">Flip</button>
+                  <button class="btn" id="resetBtn" type="button">Reset</button>
+                </div>
+
+                <div class="status muted" id="status">READY. GOOD LUCK.</div>
+                <div class="stats" id="stats">FLIPS: 0  |  HEADS: 0  |  TAILS: 0</div>
+              </div>
+            </div>
+
+            <div class="unlock" id="unlock">
+              <hr class="divider" />
+
+              <p class="muted">Hi Flip Team,</p>
+
+              <p class="muted">
+                I’m a growth and marketing manager based in New Hampshire, currently working at a startup where I juggle many hats.
+                I’ve spent the past few years building and growing products from the ground up, and I’m drawn to early-stage teams
+                that value a growth mindset and an entrepreneurial spirit.
+              </p>
+
+              <p class="muted">
+                Most recently, I’ve been leading marketing and growth at Artura Finance, a leverage trading platform. I own social and
+                content end to end, design and run growth funnels, launch user acquisition campaigns, and manage a small cross-functional
+                team across BD, creative, and community. I also work directly with external agencies and partners, negotiating deals and
+                coordinating execution, while staying hands-on with writing, posting, and campaign management myself.
+              </p>
+
+              <p class="muted">
+                Flip is clearly being intentional about keeping the product under wraps, but from what I can see, it looks like a simple,
+                gamified take on prediction or betting. I’ve worked on early-stage betting and gambling-style products before and have
+                spent a lot of time in the trenches of crypto, tech, and trading communities. I’d love to learn more about what you’re
+                building and explore how I could help from a growth or marketing perspective.
+              </p>
+
+              <p class="muted">
+                Thanks for the opportunity, and I’d be happy to jump on a call to chat further.
+              </p>
+
+              <p class="muted">
+                Best,<br>
+                <span style="color:var(--fg)">Aidan</span>
+              </p>
+
+              <div class="links">
+                <div><span style="color:var(--fg)">Telegram:</span> <a href="https://t.me/InstantSleep" target="_blank" rel="noreferrer">@InstantSleep</a></div>
+                <div><span style="color:var(--fg)">Twitter:</span> <a href="https://x.com/RugMeGently" target="_blank" rel="noreferrer">x.com/RugMeGently</a></div>
+                <div><span style="color:var(--fg)">LinkedIn:</span> <a href="https://www.linkedin.com/in/aidan-m-byrne/" target="_blank" rel="noreferrer">linkedin.com/in/aidan-m-byrne</a></div>
+                <div><span style="color:var(--fg)">Calendly:</span> <a href="https://calendly.com/aidan-artura-_mat/30min" target="_blank" rel="noreferrer">30-min chat</a></div>
+              </div>
+
+              <a class="download" href="./Aidan_Byrne_Resume.pdf" download>
+                Download Full Resume (PDF)
+              </a>
+
+              <div class="footerHint">
+                TIP: If you host this on GitHub Pages / Netlify, keep <code style="font-family:inherit;">index.html</code> and <code style="font-family:inherit;">Aidan_Byrne_Resume.pdf</code> in the same folder.
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h1 style="font-size:14px; margin-bottom:12px;">How it works</h1>
+            <p>
+              This page uses a simple random coin flip (50/50).
+            </p>
+            <p style="margin-bottom:0;">
+              GOOD LUCK.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const flipBtn = document.getElementById("flipBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const coin = document.getElementById("coin");
+  const coinFace = document.getElementById("coinFace");
+  const statusEl = document.getElementById("status");
+  const statsEl = document.getElementById("stats");
+  const unlock = document.getElementById("unlock");
+
+  let flips = 0, heads = 0, tails = 0;
+
+  function setStatus(text, cls){
+    statusEl.className = "status " + (cls || "muted");
+    statusEl.textContent = text;
+  }
+
+  function updateStats(){
+    statsEl.textContent = `FLIPS: ${flips}  |  HEADS: ${heads}  |  TAILS: ${tails}`;
+  }
+
+  function setFace(symbol){
+    coinFace.textContent = symbol;
+  }
+
+  function reset(){
+    flips = 0; heads = 0; tails = 0;
+    coin.classList.remove("flip");
+    setFace("???");
+    unlock.style.display = "none";
+    setStatus("READY. GOOD LUCK.", "muted");
+    updateStats();
+    flipBtn.disabled = false;
+  }
+
+  function flip(){
+    flipBtn.disabled = true;
+    unlock.style.display = "none";
+    setStatus("FLIPPING...", "muted");
+
+    // restart animation
+    coin.classList.remove("flip");
+    void coin.offsetWidth;
+    coin.classList.add("flip");
+
+    // decide outcome
+    const isHeads = Math.random() < 0.5;
+
+    setTimeout(() => {
+      flips += 1;
+
+      if (isHeads){
+        heads += 1;
+        setFace("HEADS");
+        setStatus("HEADS! UNLOCKED.", "good");
+        unlock.style.display = "block";
+      } else {
+        tails += 1;
+        setFace("TAILS");
+        setStatus("TAILS. TRY AGAIN.", "bad");
+        unlock.style.display = "none";
+      }
+
+      updateStats();
+      flipBtn.disabled = false;
+    }, 850);
+  }
+
+  flipBtn.addEventListener("click", flip);
+  resetBtn.addEventListener("click", reset);
+
+  reset();
+</script>
+</body>
+</html>
